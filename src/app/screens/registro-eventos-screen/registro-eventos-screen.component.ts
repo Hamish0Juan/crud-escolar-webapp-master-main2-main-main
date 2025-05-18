@@ -1,120 +1,57 @@
-import { Component, OnInit, ViewChild, AfterViewInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatTableDataSource } from '@angular/material/table';
-import { ActivatedRoute, Router } from '@angular/router';
-import { EliminarEventoModalComponent } from 'src/app/modals/eliminar-evento-modal/eliminar-evento-modal.component';
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { EventosService } from 'src/app/services/eventos.service';
-import { FacadeService } from 'src/app/services/facade.service';
-
+import { Location } from '@angular/common';
 @Component({
-  selector: 'app-eventos-screen',
+  selector: 'app-registro-eventos-screen',
   templateUrl: './registro-eventos-screen.component.html',
   styleUrls: ['./registro-eventos-screen.component.scss']
 })
-export class EventosScreenComponent implements OnInit, AfterViewInit {
+export class EventosScreenComponent implements OnInit {
 
-  // Datos del usuario
-  public name_user: string = "";
+  public tipo: string = "registro-eventos";
+
+  public evento: any = {};
+
+  public isAdmin: boolean = false;
+  public isAlumno: boolean = false;
+  public isMaestro: boolean = false;
+  public editar: boolean = false;
+  public tipo_user: string = "";
+
+  public idEvento: number = 0;
   public rol: string = "";
-  public token: string = "";
-  
-  // Datos de eventos
-  public lista_eventos: any[] = [];
-  public dataSource = new MatTableDataSource<any>([]);
-
-  displayedColumns: string[] = [
-    'titulo',
-    'tipo_de_evento',
-    'fecha_de_realizacion',
-    'hora_inicio',
-    'hora_fin',
-    'lugar',
-    'publico_objetivo',
-    'programa_educativo',
-    'responsable_del_evento',
-    'descripcion_breve',
-    'cupo_max',
-    'editar',
-    'eliminar'
-  ];
-
-  @ViewChild(MatPaginator) paginator: MatPaginator;
-element: any;
 
   constructor(
-    private eventosService: EventosService,
-    private facadeService: FacadeService,
-    private router: Router,
-    private activatedRoute: ActivatedRoute,
-    private dialog: MatDialog
-  ) {}
+    public activatedRoute: ActivatedRoute,
+    private eventosService: EventosService
+  ) { }
 
   ngOnInit(): void {
-    this.verificarSesion();
-    this.obtenerEventos();
-  }
+    if (this.activatedRoute.snapshot.params['rol'] != undefined) {
+      this.rol = this.activatedRoute.snapshot.params['rol'];
+      console.log("Rol detectado: ", this.rol);
+    }
 
-  ngAfterViewInit(): void {
-    this.dataSource.paginator = this.paginator;
-    this.initPaginator();
-  }
-
-  private verificarSesion(): void {
-    this.token = this.facadeService.getSessionToken();
-    this.name_user = this.facadeService.getUserCompleteName();
-    this.rol = this.facadeService.getUserGroup();
-
-    if (!this.token) {
-      this.router.navigate([""]);
+    if (this.activatedRoute.snapshot.params['id'] != undefined) {
+      this.editar = true;
+      this.idEvento = this.activatedRoute.snapshot.params['id'];
+      console.log("ID Evento: ", this.idEvento);
+      this.obtenerEventoByID();
     }
   }
 
-  private initPaginator(): void {
-    setTimeout(() => {
-      this.paginator._intl.itemsPerPageLabel = 'Registros por página';
-      this.paginator._intl.getRangeLabel = (page, pageSize, length) => {
-        if (length === 0 || pageSize === 0) return `0 de ${length}`;
-        const start = page * pageSize;
-        const end = Math.min(start + pageSize, length);
-        return `${start + 1} - ${end} de ${length}`;
-      };
-      this.paginator._intl.firstPageLabel = 'Primera página';
-      this.paginator._intl.lastPageLabel = 'Última página';
-      this.paginator._intl.previousPageLabel = 'Página anterior';
-      this.paginator._intl.nextPageLabel = 'Página siguiente';
-    }, 500);
-  }
-
-  public obtenerEventos(): void {
-    this.eventosService.obtenerEventos().subscribe(
+  public obtenerEventoByID() {
+    this.eventosService.getEventoByID(this.idEvento).subscribe(
       (response) => {
-        this.lista_eventos = response;
-        this.dataSource = new MatTableDataSource(this.lista_eventos);
-        this.dataSource.paginator = this.paginator;
+        this.evento = response;
+        // Mapear los campos si fuera necesario
+        console.log("Datos del evento: ", this.evento);
       },
       (error) => {
-        alert("No se pudo obtener la lista de eventos");
+        alert("No se pudieron obtener los datos del evento para editar");
       }
     );
-  }
-
-  public goEditar(idEvento: number): void {
-    this.router.navigate(["registro-eventos/" + idEvento]);
-  }
-
-  public delete(idEvento: number): void {
-    const dialogRef = this.dialog.open(EliminarEventoModalComponent, {
-      width: '400px',
-      data: { id: idEvento }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result?.isDelete) {
-        this.obtenerEventos(); // solo se recarga si eliminó
-        alert("Evento eliminado correctamente.");
-      }
-    });
   }
 
 }
